@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Calculadora Hemodinámica de Oxígeno - Shock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f2f4f7;
+    margin: 0;
+    padding: 20px;
+}
+.container {
+    max-width: 760px;
+    margin: auto;
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+h1 {
+    text-align: center;
+    color: #003366;
+}
+label {
+    font-weight: bold;
+    margin-top: 12px;
+    display: block;
+}
+input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.result {
+    margin-top: 20px;
+    background: #eef3ff;
+    padding: 15px;
+    border-radius: 8px;
+}
+.red { color: darkred; font-weight: bold; }
+.orange { color: darkorange; font-weight: bold; }
+.preshock { color: purple; font-weight: bold; font-size: 18px; }
+.box {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 6px;
+    background: #f9f9f9;
+    border-left: 5px solid #003366;
+}
+.footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 12px;
+    color: #555;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>Calculadora Hemodinámica de Oxígeno</h1>
+
+<label>Hemoglobina (g/dL)</label>
+<input type="number" id="hb" step="0.1">
+
+<label>SaO₂ (%)</label>
+<input type="number" id="sao2" step="0.1">
+
+<label>SvO₂ (%)</label>
+<input type="number" id="svo2" step="0.1">
+
+<label>PaO₂ (mmHg)</label>
+<input type="number" id="pao2" step="0.1">
+
+<label>PvO₂ (mmHg)</label>
+<input type="number" id="pvo2" step="0.1">
+
+<label>TAM (mmHg)</label>
+<input type="number" id="tam" step="1">
+
+<label>PVC (mmHg)</label>
+<input type="number" id="pvc" step="1">
+
+<button onclick="calcular()">Calcular</button>
+
+<div class="result" id="resultado"></div>
+</div>
+
+<div class="footer">
+Creado por El Dr Francisco Berrio - Médico Residente en terapia intensiva, Clinica ITEBA, Universidad del Salvador, CABA. | Utilizando IA
+</div>
+
+<script>
+function calcular() {
+
+    let hb = parseFloat(document.getElementById("hb").value);
+    let sao2 = parseFloat(document.getElementById("sao2").value) / 100;
+    let svo2 = parseFloat(document.getElementById("svo2").value) / 100;
+    let pao2 = parseFloat(document.getElementById("pao2").value);
+    let pvo2 = parseFloat(document.getElementById("pvo2").value);
+    let tam = parseFloat(document.getElementById("tam").value);
+    let pvc = parseFloat(document.getElementById("pvc").value);
+
+    if (isNaN(hb) || isNaN(sao2) || isNaN(svo2) || isNaN(pao2) || isNaN(pvo2) || isNaN(tam) || isNaN(pvc)) {
+        document.getElementById("resultado").innerHTML = "<p class='red'>⚠️ Complete todos los campos</p>";
+        return;
+    }
+
+    let CaO2 = (hb * 1.36 * sao2) + (pao2 * 0.0031);
+    let CvO2 = (hb * 1.36 * svo2) + (pvo2 * 0.0031);
+    let DavO2 = CaO2 - CvO2;
+
+    let GC = ((DavO2 * 100) / CaO2) / DavO2;
+    let RVS = ((tam - pvc) * 80) / GC;
+    let O2ER = (DavO2 / CaO2) * 100;
+
+    let alertas = [];
+    if (CaO2 < 14) alertas.push("Contenido arterial de O₂ bajo → anemia / hipoxemia");
+    if (O2ER > 40) alertas.push("Extracción de O₂ elevada → hipoperfusión tisular");
+    if (RVS < 800) alertas.push("RVS bajas → vasodilatación");
+    if (RVS > 1600) alertas.push("RVS elevadas → vasoconstricción");
+
+    let preshock = "";
+    if (tam >= 65 && O2ER > 40) {
+        preshock = "<p class='preshock'>⚠️ PRESHOCK: TAM conservada con hipoperfusión</p>";
+    }
+
+    let shock = "Perfil no concluyente";
+    if (RVS < 800 && O2ER > 40) shock = "Shock distributivo (séptico)";
+    else if (RVS > 1600 && O2ER > 40) shock = "Shock cardiogénico u obstructivo";
+    else if (RVS > 1600 && GC < 4) shock = "Shock hipovolémico";
+    else if (RVS < 800 && O2ER < 30) shock = "Shock hiperdinámico temprano";
+
+    document.getElementById("resultado").innerHTML = `
+        ${preshock}
+
+        <p><b>CaO₂:</b> ${CaO2.toFixed(2)} ml/dL</p>
+        <p><b>CvO₂:</b> ${CvO2.toFixed(2)} ml/dL</p>
+        <p><b>ΔAVO₂:</b> ${DavO2.toFixed(2)} ml/dL</p>
+        <p><b>O₂ER:</b> ${O2ER.toFixed(1)} %</p>
+        <p><b>GC estimado:</b> ${GC.toFixed(2)} L/min</p>
+        <p><b>RVS:</b> ${RVS.toFixed(0)} dyn·s·cm⁻⁵</p>
+
+        <div class="box">
+            <b>🚨 Alertas clínicas</b>
+            <ul>${alertas.map(a => `<li class="red">${a}</li>`).join("")}</ul>
+        </div>
+
+        <div class="box">
+            <b>🩺 Tipo de shock sugerido</b>
+            <p class="orange">${shock}</p>
+        </div>
+    `;
+}
+</script>
+
+</body>
+</html>
